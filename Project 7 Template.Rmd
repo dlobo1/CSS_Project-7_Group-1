@@ -1,5 +1,6 @@
 ---
 title: "Project 7: Difference-in-Differences and Synthetic Control"
+author: "Daniel Lobo, Enrique Valencia Lopez, Rachel Ross"
 output: html_document
 ---
 
@@ -55,13 +56,98 @@ Create plots and provide 1-2 sentence analyses to answer the following questions
 - Which states were home to most uninsured Americans prior to 2014? How about in 2021? **Note**: 2010 state population is provided as a variable to answer this question. In an actual study you would likely use population estimates over time, but to simplify you can assume these numbers stay about the same.
 
 ```{r}
-# highest and lowest uninsured rates
+# Visualize the states with the highest and lowest rates of uninsured individuals in 2014
+
+# Lowest Uninsured Rates
+medicaid_expansion %>% 
+  filter(year == 2014) %>%
+  arrange(uninsured_rate) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_rate),
+                 stat = 'identity') +
+    ggtitle('Lowest Uninsured Rate') +
+    xlab('State') + ylab('Uninsurance Rate')
+  
+  
+# Highest Uninsured Rates
+medicaid_expansion %>% 
+  filter(year == 2014) %>%
+  arrange(desc(uninsured_rate)) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_rate),
+                 stat = 'identity') +
+    ggtitle('Highest Uninsured Rate') +
+    xlab('State') + ylab('Uninsurance Rate')
 ```
+It appears that the five states with the lowest uninsured rate (or highest percentage of individuals who were insured in 2014) were Massachusetts, Vermont, Hawaii, DC (which we are counting as a state for the purposes of this analysis), and Iowa.
+
+Conversely, the five states with the highest uninsured rate (or lowest percentage of individuals who were insured in 2014) were Texas, Alaska, Florida, Georgia, and Nevada. 
+
+Next, we will examine how these trends compare to an analysis of the most uninsured Americans, thus taking into account the population of each state.
 
 ```{r}
-# most uninsured Americans
-```
+# Visualize the states with the smallest number of uninsured Americans in 2010 and 2014
 
+# First, create a new variable for the uninsured population
+medicaid_expansion %>% mutate(uninsured_pop = round(uninsured_rate*population))
+
+# Then, visualize the states that were home to the smallest uninsured populations in 2010 and 2014
+# 2010
+medicaid_expansion %>% mutate(uninsured_pop = round(uninsured_rate*population)) %>%
+  filter(year == 2010) %>%
+  arrange(uninsured_pop) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_pop),
+                 stat = 'identity') +
+    ggtitle('2010: Smallest Uninsured Population') +
+    xlab('State') + ylab('Uninsurance Population')
+
+# 2014
+medicaid_expansion %>% mutate(uninsured_pop = round(uninsured_rate*population)) %>%
+  filter(year == 2014) %>%
+  arrange(uninsured_pop) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_pop),
+                 stat = 'identity') +
+    ggtitle('2014: Smallest Uninsured Population') +
+    xlab('State') + ylab('Uninsurance Population')
+```
+```{r}
+# Now, visualize the states that were home to the largest uninsured populations in 2010 and 2014
+
+# 2010
+medicaid_expansion %>% mutate(uninsured_pop = round(uninsured_rate*population)) %>%
+  filter(year == 2010) %>%
+  arrange(desc(uninsured_rate)) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_pop),
+                 stat = 'identity') +
+    ggtitle('2010: Largest Uninsured Population') +
+    xlab('State') + ylab('Uninsurance Population')
+
+# 2014
+medicaid_expansion %>% mutate(uninsured_pop = round(uninsured_rate*population)) %>%
+  filter(year == 2014) %>%
+  arrange(desc(uninsured_rate)) %>%
+  slice(1:5) %>%
+  ggplot() +
+    geom_bar(aes(x = State,
+                 y = uninsured_pop),
+                 stat = 'identity') +
+    ggtitle('2014: Largest Uninsured Population') +
+    xlab('State') + ylab('Uninsurance Population')
+```
+Taking into account the number of individuals in each state, we see a slight variation in the 5 states with the smallest uninsured population: this subset of states is now Vermont, North Dakota, Delaware, Hawaii, and Wyoming.
 
 # Difference-in-Differences Estimation
 
@@ -72,24 +158,69 @@ Do the following:
 - Choose a state that adopted the Medicaid expansion on January 1, 2014 and a state that did not. **Hint**: Do not pick Massachusetts as it passed a universal healthcare law in 2006, and also avoid picking a state that adopted the Medicaid expansion between 2014 and 2015.
 - Assess the parallel trends assumption for your choices using a plot. If you are not satisfied that the assumption has been met, pick another state and try again (but detail the states you tried).
 
+
 ```{r}
-# Parallel Trends plot
+# Create a Parallel Trends Plot for Kentucky & Alabama
+medicaid_expansion %>%
+  filter(State %in% c("Kentucky","Alabama")) %>%
+  ggplot() + 
+  geom_point(aes(x = year, 
+                 y = uninsured_rate, 
+                 color = State)) +
+  geom_line(aes(x = year, 
+                y = uninsured_rate, 
+                color = State)) +
+  geom_vline(aes(xintercept = 2014)) +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text()) +
+  ggtitle('Parallel Trends Assessment') +
+  xlab('Year') +
+  ylab('Uninsurance Rate')
 ```
+We selected two southern states, with relatively comparable general political affiliation trends: Kentucky (adopter) and Alabama (non-adopter). Here, we assess the parallel trends assumption, which requires that the difference between our "treatment" (expanded Medicaid) and "control" (did not expand Medicaid) units are constant in the pre-treatment period (i.e., before 1/1/2014). The lines do appear to vary together until the intervention point, so we can move forward generally assuming that the parallel trends assumption is upheld.
+
 
 - Estimates a difference-in-differences estimate of the effect of the Medicaid expansion on the uninsured share of the population. You may follow the lab example where we estimate the differences in one pre-treatment and one post-treatment period, or take an average of the pre-treatment and post-treatment outcomes
 
 ```{r}
-# Difference-in-Differences estimation
-```
+# Difference-in-Differences Estimation (Kentucky & Alabama)
 
+# Start by creating a new dataframe with the relevant states and timeframe
+df <- medicaid_expansion %>%
+  filter(State %in% c("Kentucky","Alabama")) %>%
+   filter(year >= 2014 & year<= 2015) 
+
+# Calculate the pre-treatment difference
+pre_diff <- df %>%
+  filter(year == 2014) %>%
+  select(State, 
+         uninsured_rate) %>%
+  spread(State, 
+         uninsured_rate) %>%
+  summarise(Kentucky - Alabama)
+  
+# Calculate the post-treatment difference
+post_diff <- df %>%
+  filter(year == 2015) %>%
+  select(State, 
+         uninsured_rate) %>%
+  spread(State, 
+         uninsured_rate) %>%
+  summarise(Kentucky - Alabama)
+
+# Calculate the difference-in-difference 
+diff_in_diffs <- post_diff - pre_diff
+diff_in_diffs
+```
+It appears that our treatment effect is approximately 0.0083.
 
 ## Discussion Questions
 
 - Card/Krueger's original piece utilized the fact that towns on either side of the Delaware river are likely to be quite similar to one another in terms of demographics, economics, etc. Why is that intuition harder to replicate with this data?
-- **Answer**:
+- **Answer**: It seems more feasible to make the claim that towns within a single state that are simply located on different sides of a river are similar across a variety of relevant characteristics than it is to make that same claim across states. Here, we make the argument that our two selected states are similar in terms of the distribution of their citizens' political affiliations, but meaningful differences are likely to exist between two states. This limits our confidence in drawing causal conclusions from our observed data.
 
 - What are the strengths and weaknesses of using the parallel trends assumption in difference-in-differences estimates?
-- **Answer**:
+- **Answer**: The parallel trends assumption is helpful because it allows us to quickly identify if there are apparent differences between our treatment and control groups before our intervention occurs. If significant trendline variation exists between our two groups, then we lose confidence in our ability to isolate the effect of the intervention on our outcome of interest. However, using the parallel trends assumption is not without faults: firstly, to our knowledge there is not a widely accepted significance test or threshold to objectively determine if this assumption has been met. Instead, we rely upon somewhat subjective visual inspection of our graphs Furthermore, the degree to which this assumption is met may be impacted by how many data points we have before the intervention period. For example, if we zoom in to a few months prior to the intervention, the trend lines for both groups may appear to be parallel. However, if we select a longer lookback period, we may be presented with the opportunity to observe more variation.
 
 
 # Synthetic Control
