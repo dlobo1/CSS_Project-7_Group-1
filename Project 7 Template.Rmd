@@ -238,22 +238,29 @@ summary(medicaid_expansion)
 
 # Subset the data to build synthetic control for New Hampshire 
 subset<- medicaid_expansion %>% 
-  filter(Date_Adopted>=as.Date("2014-08-15") | is.na(medicaid_expansion$Date_Adopted))
+  filter(is.na(medicaid_expansion$Date_Adopted) | State=="New Hampshire") %>% 
+  mutate(treatment= ifelse(State=="New Hampshire" & as.numeric(format(Date_Adopted, '%Y')) < year, 
+                          1, 
+                          0))
 
+# KQ: just ignore staggered adoption for now because someone else will do that in section below; let's just create synthetic new hampshire 
+
+# KQ commenting out below and combining the above — 
 # To add variable for treatment (adoption of Medicaid expansion in a specific year)
-subset <- subset %>%
-select(State, Date_Adopted, year, uninsured_rate, population) %>%
-mutate(treatment = ifelse(as.numeric(format(subset$Date_Adopted, '%Y') <= as.numeric(subset$year)),
-1,
-0)) 
+#subset <- subset %>%
+#select(State, Date_Adopted, year, uninsured_rate, population) %>%
+#mutate(treatment = ifelse(as.numeric(format(subset$Date_Adopted, '%Y') <= #as.numeric(subset$year)),
+#1,
+#0)) 
 
 # Record NAs as 0 in treatment 
-subset <- subset %>%
-    mutate(treatment = if_else(is.na(treatment), 0, treatment))
+#subset <- subset %>%
+#    mutate(treatment = if_else(is.na(treatment), 0, treatment))
+
+# KQ: daniel, check output below to confirm you just have one treated unit and then all the donor rows flagged correctly 
 
 # non-augmented synthetic control 
-syn <- augsynth(uninsured_rate ~ treatment, State, year, subset,
-progfunc = "None", scm = T) 
+syn <- augsynth(uninsured_rate ~ treatment, State, year, subset, progfunc = "None", scm = T) 
 
 summary(syn)
 
@@ -277,8 +284,8 @@ plot(syn)
 
 ```{r}
 # augmented synthetic control
-ridge_syn <- augsynth(uninsured_rate ~ treatment, State, year, subset,
-progfunc = "ridge", scm = T)
+
+ridge_syn <- augsynth(uninsured_rate ~ treatment, State, year, subset, progfunc = "ridge", scm = T)
 
 summary(ridge_syn)
 
@@ -301,7 +308,7 @@ plot(ridge_syn) # The results are the same across synthetic control and augmente
 ```{r}
 # barplots of weights
 data.frame(ridge_syn$weights) %>%
-tibble::rownames_to_column('State') %>%
+tibble::rownames_to_column('State') %>% 
 ggplot() +
 geom_bar(aes(x = State, y = ridge_syn$weights),
 stat = 'identity') +
@@ -311,6 +318,7 @@ axis.text.x = element_text(angle = 90)) +
 ggtitle('Synthetic Control Weights') +
 xlab('State') +
 ylab('Weight')
+
 
 # Error in app$vspace(new_style$`margin-top` %||% 0) : attempt to apply non-function
 
