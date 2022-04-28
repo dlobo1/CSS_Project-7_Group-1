@@ -375,14 +375,84 @@ Do the following:
 
 ```{r}
 # multisynth model states
+
+
+# Add a pre/post-treatment indicator
+medicaid_expansion$Year_Adopted = format(medicaid_expansion$Date_Adopted, format="%Y")
+medicaid_expansion$Year_Adopted = as.numeric(medicaid_expansion$Year_Adopted)
+medicaid_expansion$treatment = if_else(medicaid_expansion$Year_Adopted > medicaid_expansion$year, 0, 1, missing=0)
+
+# with a choice of nu
+ppool_syn <- multisynth(uninsured_rate ~ treatment, State, year, medicaid_expansion, nu = 0, n_leads = 5)
+
+
+ppool_syn
+ppool_syn_summ <- summary(ppool_syn)
+
+
 ```
 
-- Estimate a multisynth model using time cohorts. For the purpose of this exercise, you can simplify the treatment time so that states that adopted Medicaid expansion within the same year (i.e. all states that adopted epxansion in 2016) count for the same cohort. Plot the treatment effects for these time cohorts.
+
+
 
 ```{r}
-# multisynth model time cohorts
+
+ppool_syn_summ
 ```
 
+- Estimate a multisynth model that treats each state individually. Choose
+a fraction of states that you can fit on a plot and examine their treatment effects.
+
+
+
+```{r}
+##States included those that adopted in 2014 and those in 2020.
+ppool_syn_summ$att %>%
+  filter(Level %in% c("Arizona", "Arkansas",  "Colorado","Connecticut","Delaware","District of Columbia", "Hawaii", "Nebraska", "Utah"))%>%
+  ggplot(aes(x =Time, y = Estimate, color = Level)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "bottom") +
+  ggtitle('Synthetic Controls for Medicare Expansion') +
+  xlab('Time') +
+  ylab('Expenditure on Pupil Estimate')
+
+```
+Estimate a multisynth model using time cohorts. For the purpose of this exercise, you can simplify the treatment time so that states that adopted Medicaid expansion within the same year (i.e. all states that adopted epxansion in 2016) count for the same cohort. Plot the treatment effects for these time cohorts.
+
+
+```{r}
+
+
+ppool_syn_time <- multisynth(uninsured_rate ~ treatment, State, year, medicaid_expansion, nu = 0, n_leads = 5, time_cohort = TRUE)
+
+ppool_syn_time_summ <- summary(ppool_syn_time)
+
+ppool_syn_time_summ
+
+
+
+```
+
+
+```{r}
+ppool_syn_time_summ$att %>%
+  ggplot(aes(x = Time, y = Estimate, color = Level)) +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = 'None') +
+  ggtitle('Synthetic Controls for Medicare Expansion') +
+  xlab('Time') +
+  ylab('Expenditure on Pupil Estimate') +
+  facet_wrap(~Level)
+
+```
 ## Discussion Questions
 
 - One feature of Medicaid is that it is jointly administered by the federal government and the states, and states have some flexibility in how they implement Medicaid. For example, during the Trump administration, several states applied for waivers where they could add work requirements to the eligibility standards (i.e. an individual needed to work for 80 hours/month to qualify for Medicaid). Given these differences, do you see evidence for the idea that different states had different treatment effect sizes?
