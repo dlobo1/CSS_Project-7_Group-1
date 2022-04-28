@@ -21,7 +21,7 @@ pacman::p_load(# Tidyverse packages including dplyr and ggplot2
 set.seed(1)
 
 # load data
-medicaid_expansion <- read_csv('data/medicaid_expansion.csv')
+medicaid_expansion <- read_csv('medicaid_expansion.csv')
 ```
 
 # Introduction
@@ -234,8 +234,6 @@ Do the following:
 - Choose a state that adopted the Medicaid expansion after January 1, 2014. Construct a non-augmented synthetic control and plot the results (both pre-treatment fit and post-treatment differences). Also report the average ATT and L2 imbalance.
 
 ```{r}
-summary(medicaid_expansion)
-
 # Subset the data to build synthetic control for New Hampshire 
 subset<- medicaid_expansion %>% 
   filter(is.na(medicaid_expansion$Date_Adopted) | State=="New Hampshire") %>% 
@@ -243,40 +241,35 @@ subset<- medicaid_expansion %>%
                           1, 
                           0))
 
-# KQ: just ignore staggered adoption for now because someone else will do that in section below; let's just create synthetic new hampshire 
-
-# KQ commenting out below and combining the above — 
-# To add variable for treatment (adoption of Medicaid expansion in a specific year)
-#subset <- subset %>%
-#select(State, Date_Adopted, year, uninsured_rate, population) %>%
-#mutate(treatment = ifelse(as.numeric(format(subset$Date_Adopted, '%Y') <= #as.numeric(subset$year)),
-#1,
-#0)) 
-
-# Record NAs as 0 in treatment 
-#subset <- subset %>%
-#    mutate(treatment = if_else(is.na(treatment), 0, treatment))
-
-# KQ: daniel, check output below to confirm you just have one treated unit and then all the donor rows flagged correctly 
-
 # non-augmented synthetic control 
 syn <- augsynth(uninsured_rate ~ treatment, State, year, subset, progfunc = "None", scm = T) 
 
 summary(syn)
 
-# Average ATT Estimate (Std. Error): -0.006  (0.008)
+# Average ATT Estimate (Std. Error): -0.018  ( 0.296 )
+# L2 Imbalance: 0.014
 
-# Global L2 Imbalance: 0.001
-# Scaled Global L2 Imbalance: 0.089
-# Percent improvement from uniform global weights: 91.1
-
-# Individual L2 Imbalance: 0.008
-# Scaled Individual L2 Imbalance: 0.218
-# Percent improvement from uniform individual weights: 78.2
-
+# Plot of non-augmented synthetic control 
 plot(syn)
 
-# Should we plot weights as well? 
+```
+
+```{R}
+# Weights of non-augmented synthetic control 
+data.frame(syn$weights) %>%
+# change index to a column
+tibble::rownames_to_column('State') %>%
+ggplot() +
+# stat = identity to take the literal value instead of a count for geom_bar()
+geom_bar(aes(x = State,
+y = syn.weights),
+stat = 'identity') +
+theme_fivethirtyeight() +
+theme(axis.title = element_text(),
+axis.text.x = element_text(angle = 90)) +
+ggtitle('Non-augmented Synthetic Control Weights') +
+xlab('State') +
+ylab('Weight')
 
 ```
 
@@ -289,24 +282,17 @@ ridge_syn <- augsynth(uninsured_rate ~ treatment, State, year, subset, progfunc 
 
 summary(ridge_syn)
 
-# Average ATT Estimate (Std. Error): -0.006  (0.008)
+# Average ATT Estimate (p Value for Joint Null):  -0.017   ( 0.543 )
+# L2 Imbalance: 0.014
 
-# Global L2 Imbalance: 0.001
-# Scaled Global L2 Imbalance: 0.089
-# Percent improvement from uniform global weights: 91.1
-
-# Individual L2 Imbalance: 0.008
-# Scaled Individual L2 Imbalance: 0.218
-# Percent improvement from uniform individual weights: 78.2
-
-plot(ridge_syn) # The results are the same across synthetic control and augmented synthetic control. Why?
+plot(ridge_syn) # The results are similar across synthetic control and augmented synthetic control, except the Ridge ATT estimate has a greater standard error. Why?
 
 ```
 
 - Plot barplots to visualize the weights of the donors.
 
 ```{r}
-# barplots of weights
+# barplots of ridge syn weights
 data.frame(ridge_syn$weights) %>%
 tibble::rownames_to_column('State') %>% 
 ggplot() +
@@ -315,12 +301,56 @@ stat = 'identity') +
 theme_fivethirtyeight() +
 theme(axis.title = element_text(),
 axis.text.x = element_text(angle = 90)) +
-ggtitle('Synthetic Control Weights') +
+ggtitle('Augmented Synthetic Control Weights') +
 xlab('State') +
 ylab('Weight')
 
+# The weights are essentially the same, except Florida and Georgia appear as minimally weighted contributors
 
-# Error in app$vspace(new_style$`margin-top` %||% 0) : attempt to apply non-function
+```
+```{R}
+# To plot the ridge augmentation alongside NH and synthetic NH
+syn_sum<-summary(syn)
+ridge_sum <- summary(ridge_syn)
+
+syn_NH <- subset %>%
+filter(State == "New Hampshire") %>%
+bind_cols(difference = syn_sum$att$Estimate) %>%
+mutate(synthetic_NH = uninsured_rate + difference)
+
+syn_NH_ridgesyn_NH <- syn_NH %>%
+bind_cols(ridge_difference = ridge_sum$att$Estimate) %>%
+mutate(ridge_synthetic_NH = uninsured_rate + ridge_difference)
+
+syn_NH_ridgesyn_NH %>%
+ggplot() +
+geom_point(aes(x = year,
+y = uninsured_rate,
+color = 'New Hampshire')) +
+geom_line(aes(x = year,
+y = uninsured_rate,
+color = 'New Hampshire')) +
+geom_point(aes(x = year,
+y = synthetic_NH,
+color = 'Synthetic NH')) +
+geom_line(aes(x = year,
+y = synthetic_NH,
+color = 'Synthetic NH')) +
+geom_point(aes(x = year,
+y = ridge_synthetic_NH,
+color = 'Ridge Synthetic NH')) +
+geom_line(aes(x = year,
+y = ridge_synthetic_NH,
+color = 'Ridge Synthetic NH')) +
+scale_color_manual(values = c('New Hampshire' = 'red',
+'Synthetic NH' = 'blue',
+'Ridge Synthetic NH' = 'green')) +
+geom_vline(aes(xintercept = 2014.8)) +
+theme_fivethirtyeight() +
+theme(axis.title = element_text()) +
+ggtitle('New Hampshire, Synthetic NH, Ridge Synthetic NH') +
+xlab('Year') +
+ylab('Uninsured Rate')
 
 ```
 
@@ -330,7 +360,7 @@ ylab('Weight')
 
 
 - What are the advantages and disadvantages of synthetic control compared to difference-in-differences estimators?
-- **Answer**: 
+- **Answer**: The synthetic control method provides a systematic way to choose comparison units in comparative case studies. Instead of comparing the outcome between a treatment and control group, as with difference-in-difference, synthetic control constructs a counterfactual group as a weighted combination of non-treated units (the donor pool). The identification assumption of the synthetic control method is that if the synthetic control group provides a good approximation of the outcome for the treated unit in the pre-treatment period, then any subsequent difference between the treated and control units can be attributed to the effect of the treatment intervention on the outcome. The advantage of building this synthetic counterfactual group is that the pre-treatment characteristics of the treated unit can be much more accurately approximated by a combination of untreated units that by any single non-treated unit, as is the case in difference-in-difference. Unlike the difference-in-difference approach, synthetic control can account for the effects of confounders changing over time by weighting the control group to better match the treatment group before intervention. Another advantage of the synthetic control method is that it allows researchers to systematically select comparison groups. One disadvantage of the synthetic control method is that post-treatment shocks on the donor pool can bias the results. The strength of difference-in-difference approach is that you can obtain a causal effect using observational data if the assumptions of exchangeability, positivity, SUTVA, and parallel trends are met. The results of difference-in-difference have intuitive interpretation. The limitations of the difference-in-difference approach is that it requires baseline data and a control group. You can't use this approach if allocation to treatment is determined by baseline variables or if the parallel trends assumption does not hold. 
 
 - One of the benefits of synthetic control is that the weights are bounded between [0,1] and the weights must sum to 1. Augmentation might relax this assumption by allowing for negative weights. Does this create an interpretation problem, and how should we balance this consideration against the improvements augmentation offers in terms of imbalance in the pre-treatment period?
 - **Answer**:
