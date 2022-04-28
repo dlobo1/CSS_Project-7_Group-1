@@ -416,9 +416,9 @@ ppool_syn_summ$att %>%
   theme_fivethirtyeight() +
   theme(axis.title = element_text(),
         legend.position = "bottom") +
-  ggtitle('Synthetic Controls for Medicare Expansion') +
+  ggtitle('Synthetic Controls for Medicaid Expansion') +
   xlab('Time') +
-  ylab('Expenditure on Pupil Estimate')
+  ylab('Proportion of uninsured')
 
 ```
 Estimate a multisynth model using time cohorts. For the purpose of this exercise, you can simplify the treatment time so that states that adopted Medicaid expansion within the same year (i.e. all states that adopted epxansion in 2016) count for the same cohort. Plot the treatment effects for these time cohorts.
@@ -447,9 +447,9 @@ ppool_syn_time_summ$att %>%
   theme_fivethirtyeight() +
   theme(axis.title = element_text(),
         legend.position = 'None') +
-  ggtitle('Synthetic Controls for Medicare Expansion') +
+  ggtitle('Synthetic Controls for Medicaid Expansion') +
   xlab('Time') +
-  ylab('Expenditure on Pupil Estimate') +
+  ylab('Proportion of uninsured') +
   facet_wrap(~Level)
 
 ```
