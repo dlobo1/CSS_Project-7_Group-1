@@ -408,7 +408,7 @@ a fraction of states that you can fit on a plot and examine their treatment effe
 ```{r}
 ##States included those that adopted in 2014 and those in 2020.
 ppool_syn_summ$att %>%
-  filter(Level %in% c("Arizona", "Arkansas",  "Colorado","Connecticut","Delaware","District of Columbia", "Hawaii", "Nebraska", "Utah"))%>%
+  filter(Level %in% c("Arizona", "Arkansas",  "Colorado", "Hawaii", "Nebraska", "Utah", "Pennsylvania", "Louisiana", "Michigan", "New Hampshire"))%>%
   ggplot(aes(x =Time, y = Estimate, color = Level)) +
   geom_point() +
   geom_line() +
@@ -457,9 +457,13 @@ ppool_syn_time_summ$att %>%
 
 - One feature of Medicaid is that it is jointly administered by the federal government and the states, and states have some flexibility in how they implement Medicaid. For example, during the Trump administration, several states applied for waivers where they could add work requirements to the eligibility standards (i.e. an individual needed to work for 80 hours/month to qualify for Medicaid). Given these differences, do you see evidence for the idea that different states had different treatment effect sizes?
 - **Answer**: 
+Yes, looking at our plot of the synthetic controls for each state, where we included states that adopted Medicaid early (such as Arizona, Arkansas and Colorado) and later adopters (Pennsylvania, Lousiana, Hawaii), we observe different treatment effects that could derive from the different elegibility standards. For example, New Hampshire, Arkansas and Michigan, who are states that in 2018 implemented work requirements, have generally lower effect sizes (Arkansas trend seems to be going up in recent years--perhaps a consequence of the 2018 work requirement adoption despite being an earlier Medicaid expansion adopter) than Arizona or Colorado. 
+
 
 - Do you see evidence for the idea that early adopters of Medicaid expansion enjoyed a larger decrease in the uninsured population?
 - **Answer**: 
+Early adopters would be those states that implemented Medicaid expansion in 2014. Based on the graphs, the answer would be no in the long term, yes (in general) in the short term. In the long term, states that implemented Medicaid expansion in 2015 and 2016 have larger decreases the longer the expansion lasts. For example, those who implemented the expansion in 2015 had a 3% decrease in their uninsured population four years after the expansion whereas for those states that implemented in 2016, the effect was almost immediate. For 2014, the synthetic control dooes not show such deep decrease--it seems to remain constant at around 2% (for 2015 states, it took three years to reach that stage). 
+
 
 # General Discussion Questions
 
